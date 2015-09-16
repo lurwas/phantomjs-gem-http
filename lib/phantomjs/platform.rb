@@ -13,6 +13,10 @@ module Phantomjs
         ENV['TMPDIR'] || ENV['TEMP'] || '/tmp'
       end
 
+      def use_http?
+        ENV['PHANTOMJS_USE_HTTP']
+      end
+
       def phantomjs_path
         if system_phantomjs_installed?
           system_phantomjs_path
@@ -50,19 +54,25 @@ module Phantomjs
         FileUtils.rm_rf temp_dir
         FileUtils.mkdir_p temp_dir
 
+        if use_http?
+          download_url = package_url.sub('https', 'http')
+        else
+          download_url = package_url
+        end
+
         Dir.chdir temp_dir do
-          unless system "curl -L -O #{package_url}" or system "wget #{package_url}"
-            raise "\n\nFailed to load phantomjs! :(\nYou need to have cURL or wget installed on your system.\nIf you have, the source of phantomjs might be unavailable: #{package_url}\n\n"
+          unless system "curl -L -O #{download_url}" or system "wget #{download_url}"
+            raise "\n\nFailed to load phantomjs! :(\nYou need to have cURL or wget installed on your system.\nIf you have, the source of phantomjs might be unavailable: #{download_url}\n\n"
           end
 
-          case package_url.split('.').last
+          case tmp_package_url.split('.').last
             when 'bz2'
-              system "bunzip2 #{File.basename(package_url)}"
-              system "tar xf #{File.basename(package_url).sub(/\.bz2$/, '')}"
+              system "bunzip2 #{File.basename(download_url)}"
+              system "tar xf #{File.basename(download_url).sub(/\.bz2$/, '')}"
             when 'zip'
-              system "unzip #{File.basename(package_url)}"
+              system "unzip #{File.basename(download_url)}"
             else
-              raise "Unknown compression format for #{File.basename(package_url)}"
+              raise "Unknown compression format for #{File.basename(download_url)}"
           end
 
           # Find the phantomjs build we just extracted
